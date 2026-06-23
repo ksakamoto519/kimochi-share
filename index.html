@@ -47,6 +47,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 14px;
       margin-bottom: 16px;
+      align-items: stretch;
     }
     .mood-card {
       border-radius: 20px;
@@ -55,6 +56,9 @@
       transition: transform 0.15s;
       border: 1.5px solid transparent;
       background: #F0F7FB;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .mood-card.clickable { cursor: pointer; }
     .user-row {
@@ -71,12 +75,15 @@
     .note-chip {
       font-size: 10px; color: #7AAAC0;
       background: rgba(255,255,255,0.7);
-      border-radius: 8px; padding: 2px 6px;
+      border-radius: 8px; padding: 4px 8px;
       margin-bottom: 4px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      word-break: break-all;
+      white-space: pre-wrap;
+      text-align: left;
+      width: 100%;
     }
     .time-ago { font-size: 10px; color: #9BBDD4; margin-bottom: 2px; }
-    .edit-hint { font-size: 9px; color: #B0D0E4; }
+    .edit-hint { font-size: 9px; color: #B0D0E4; margin-top: auto; }
     .match-banner {
       text-align: center;
       font-size: 13px;
@@ -108,15 +115,22 @@
     .mood-btn.selected { transform: scale(1.08); }
     .btn-emoji { font-size: 28px; }
     .btn-label { font-size: 15px; font-weight: 600; color: #7AAAC0; }
-    .note-area { margin-bottom: 20px; }
+    .note-area { margin-bottom: 8px; }
     .note-input {
       width: 100%;
       border: 1.5px solid #C0DFF0; border-radius: 14px;
       padding: 12px 14px; font-size: 14px;
       font-family: inherit; color: #3A7A9C;
       resize: none; outline: none;
-      background: #F0F8FC; height: 64px;
+      background: #F0F8FC; height: 100px;
     }
+    .char-count {
+      text-align: right;
+      font-size: 11px;
+      color: #9BBDD4;
+      margin-bottom: 14px;
+    }
+    .char-count.over { color: #E07070; }
     .confirm-btn {
       width: 100%; padding: 16px; border-radius: 16px;
       border: none; color: #fff;
@@ -139,7 +153,7 @@
   <div class="mood-pair">
     <div class="mood-card clickable" id="my-card" onclick="openSet()">
       <div class="user-row">
-        <span class="user-avatar">🌸</span>
+        <span class="user-avatar">🐩</span>
         <span class="user-name">あなた</span>
       </div>
       <div class="big-emoji" id="my-emoji">？</div>
@@ -150,7 +164,7 @@
     </div>
     <div class="mood-card" id="partner-card">
       <div class="user-row">
-        <span class="user-avatar">🌙</span>
+        <span class="user-avatar">🐈</span>
         <span class="user-name">パートナー</span>
       </div>
       <div class="big-emoji" id="partner-emoji">？</div>
@@ -167,13 +181,14 @@
 <div class="card" id="set-view">
   <button class="back-btn" onclick="closeSet()">← 戻る</button>
   <div class="set-header">
-    <span class="set-avatar">🌸</span>
+    <span class="set-avatar">🐩</span>
     <div class="set-title">今の気持ちは？</div>
   </div>
   <div class="mood-grid" id="mood-grid"></div>
   <div class="note-area">
-    <textarea class="note-input" id="note-input" placeholder="一言メモ（任意）" maxlength="40"></textarea>
+    <textarea class="note-input" id="note-input" placeholder="一言メモ（任意）" maxlength="40" oninput="updateCharCount()"></textarea>
   </div>
+  <div class="char-count" id="char-count">0 / 40文字</div>
   <button class="confirm-btn" id="confirm-btn" onclick="confirmMood()" disabled>この気持ちを登録する</button>
 </div>
 
@@ -195,10 +210,10 @@
   const db = getDatabase(app);
 
   const MOODS = [
-    { emoji: "😄", label: "最高！", color: "#3A9FD4", bg: "#E8F4FC" },
-    { emoji: "😊", label: "良い感じ", color: "#5AB8D8", bg: "#EDF7FB" },
-    { emoji: "😐", label: "普通", color: "#7FB8CC", bg: "#EEF5F8" },
-    { emoji: "😔", label: "ちょっと...", color: "#6A9CB8", bg: "#E8EFF4" },
+    { emoji: "😊", label: "良い感じ",     color: "#5AB8D8", bg: "#EDF7FB" },
+    { emoji: "😐", label: "普通",         color: "#7FB8CC", bg: "#EEF5F8" },
+    { emoji: "😵", label: "仕事忙しい",   color: "#7A9EC9", bg: "#EAF0F8" },
+    { emoji: "😔", label: "ちょっと...",  color: "#6A9CB8", bg: "#E8EFF4" },
     { emoji: "🤕", label: "話す元気ない", color: "#8AAEC4", bg: "#E8EEF2" },
   ];
 
@@ -208,6 +223,20 @@
 
   let state = { A: null, B: null };
   let draftMood = null;
+
+  // 全角10文字ごとに改行を挿入して表示
+  const formatNote = (note) => {
+    if (!note) return "";
+    let result = "";
+    let count = 0;
+    for (const ch of note) {
+      result += ch;
+      // 全角・半角問わず10文字で改行
+      count++;
+      if (count % 10 === 0 && count < note.length) result += "\n";
+    }
+    return result;
+  };
 
   const timeAgo = (ts) => {
     if (!ts) return "";
@@ -229,13 +258,14 @@
 
     if (data && data.mood !== null && data.mood !== undefined) {
       const m = MOODS[data.mood];
+      if (!m) return;
       card.style.background = m.bg;
       emojiEl.textContent = m.emoji;
       labelEl.textContent = m.label;
       labelEl.style.color = m.color;
       timeEl.textContent = timeAgo(data.ts);
       if (data.note) {
-        noteEl.textContent = "💬 " + data.note;
+        noteEl.textContent = "💬 " + formatNote(data.note);
         noteEl.style.display = "block";
       } else {
         noteEl.style.display = "none";
@@ -248,6 +278,17 @@
       noteEl.style.display = "none";
       timeEl.textContent = "";
     }
+
+    // 両カードの高さを揃える
+    setTimeout(() => {
+      const myCard = document.getElementById("my-card");
+      const partnerCard = document.getElementById("partner-card");
+      myCard.style.minHeight = "";
+      partnerCard.style.minHeight = "";
+      const maxH = Math.max(myCard.offsetHeight, partnerCard.offsetHeight);
+      myCard.style.minHeight = maxH + "px";
+      partnerCard.style.minHeight = maxH + "px";
+    }, 0);
 
     // match banner
     const myData = state[myId];
@@ -284,6 +325,14 @@
     grid.appendChild(btn);
   });
 
+  window.updateCharCount = () => {
+    const input = document.getElementById("note-input");
+    const count = document.getElementById("char-count");
+    const len = input.value.length;
+    count.textContent = `${len} / 40文字`;
+    count.classList.toggle("over", len >= 40);
+  };
+
   window.selectMood = (i) => {
     draftMood = i;
     MOODS.forEach((m, j) => {
@@ -308,10 +357,11 @@
 
   window.openSet = () => {
     draftMood = state[myId] ? state[myId].mood : null;
-    document.getElementById("note-input").value = state[myId] ? (state[myId].note || "") : "";
+    const noteVal = state[myId] ? (state[myId].note || "") : "";
+    document.getElementById("note-input").value = noteVal;
     document.getElementById("home-view").style.display = "none";
     document.getElementById("set-view").style.display = "block";
-    // 既存選択を反映
+    window.updateCharCount();
     if (draftMood !== null) selectMood(draftMood);
   };
 
