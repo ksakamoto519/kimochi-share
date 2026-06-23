@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>きもち</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #C8E6F5 0%, #A8CFF0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      padding: 16px;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: #fff;
+      border-radius: 28px;
+      padding: 28px 20px 32px;
+      box-shadow: 0 8px 40px rgba(100,160,210,0.18);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .header-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: linear-gradient(135deg, #3A9FD4, #7BCAE0);
+    }
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      background: linear-gradient(90deg, #3A9FD4, #7BCAE0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .mood-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .mood-card {
+      border-radius: 20px;
+      padding: 18px 12px 14px;
+      text-align: center;
+      transition: transform 0.15s;
+      border: 1.5px solid transparent;
+      background: #F0F7FB;
+    }
+    .mood-card.clickable { cursor: pointer; }
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .user-avatar { font-size: 16px; }
+    .user-name { font-size: 12px; color: #7AAAC0; font-weight: 600; }
+    .big-emoji { font-size: 44px; line-height: 1; margin-bottom: 6px; }
+    .mood-label { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #9BBDD4; }
+    .note-chip {
+      font-size: 10px; color: #7AAAC0;
+      background: rgba(255,255,255,0.7);
+      border-radius: 8px; padding: 2px 6px;
+      margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .time-ago { font-size: 10px; color: #9BBDD4; margin-bottom: 2px; }
+    .edit-hint { font-size: 9px; color: #B0D0E4; }
+    .match-banner {
+      text-align: center;
+      font-size: 13px;
+      color: #3A9FD4;
+      font-weight: 600;
+      background: #E8F4FC;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+    /* SET VIEW */
+    #set-view { display: none; }
+    .back-btn {
+      background: none; border: none; color: #7AAAC0;
+      font-size: 13px; cursor: pointer; padding: 0 0 16px 0;
+      font-family: inherit;
+    }
+    .set-header { text-align: center; margin-bottom: 24px; }
+    .set-avatar { font-size: 32px; display: block; margin-bottom: 6px; }
+    .set-title { font-size: 16px; font-weight: 700; color: #3A7A9C; }
+    .mood-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .mood-btn {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 18px; border-radius: 16px;
+      border: 2px solid #C0DFF0; cursor: pointer;
+      transition: all 0.18s; background: transparent;
+      font-family: inherit;
+    }
+    .mood-btn.selected { transform: scale(1.08); }
+    .btn-emoji { font-size: 28px; }
+    .btn-label { font-size: 15px; font-weight: 600; color: #7AAAC0; }
+    .note-area { margin-bottom: 20px; }
+    .note-input {
+      width: 100%;
+      border: 1.5px solid #C0DFF0; border-radius: 14px;
+      padding: 12px 14px; font-size: 14px;
+      font-family: inherit; color: #3A7A9C;
+      resize: none; outline: none;
+      background: #F0F8FC; height: 64px;
+    }
+    .confirm-btn {
+      width: 100%; padding: 16px; border-radius: 16px;
+      border: none; color: #fff;
+      font-size: 15px; font-weight: 700;
+      font-family: inherit; cursor: pointer;
+      background: #C0D8E8; transition: background 0.2s;
+    }
+    .confirm-btn.active { background: #3A9FD4; }
+  </style>
+</head>
+<body>
+
+<!-- HOME VIEW -->
+<div class="card" id="home-view">
+  <div class="header">
+    <div class="header-dot"></div>
+    <span class="header-title">きもち</span>
+    <div class="header-dot"></div>
+  </div>
+  <div class="mood-pair">
+    <div class="mood-card clickable" id="my-card" onclick="openSet()">
+      <div class="user-row">
+        <span class="user-avatar">🌸</span>
+        <span class="user-name">あなた</span>
+      </div>
+      <div class="big-emoji" id="my-emoji">？</div>
+      <div class="mood-label" id="my-label">未登録</div>
+      <div class="note-chip" id="my-note" style="display:none"></div>
+      <div class="time-ago" id="my-time"></div>
+      <div class="edit-hint">タップして更新</div>
+    </div>
+    <div class="mood-card" id="partner-card">
+      <div class="user-row">
+        <span class="user-avatar">🌙</span>
+        <span class="user-name">パートナー</span>
+      </div>
+      <div class="big-emoji" id="partner-emoji">？</div>
+      <div class="mood-label" id="partner-label">未登録</div>
+      <div class="note-chip" id="partner-note" style="display:none"></div>
+      <div class="time-ago" id="partner-time"></div>
+      <div class="edit-hint">　</div>
+    </div>
+  </div>
+  <div class="match-banner" id="match-banner" style="display:none"></div>
+</div>
+
+<!-- SET VIEW -->
+<div class="card" id="set-view">
+  <button class="back-btn" onclick="closeSet()">← 戻る</button>
+  <div class="set-header">
+    <span class="set-avatar">🌸</span>
+    <div class="set-title">今の気持ちは？</div>
+  </div>
+  <div class="mood-grid" id="mood-grid"></div>
+  <div class="note-area">
+    <textarea class="note-input" id="note-input" placeholder="一言メモ（任意）" maxlength="40"></textarea>
+  </div>
+  <button class="confirm-btn" id="confirm-btn" onclick="confirmMood()" disabled>この気持ちを登録する</button>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDO_jxAvYbg-KFyEmrEHw9f7Eseh9XAAz4",
+    authDomain: "kimochi-share-80566.firebaseapp.com",
+    databaseURL: "https://kimochi-share-80566-default-rtdb.firebaseio.com",
+    projectId: "kimochi-share-80566",
+    storageBucket: "kimochi-share-80566.firebasestorage.app",
+    messagingSenderId: "800362125966",
+    appId: "1:800362125966:web:9acb28293bddc2305907df"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const MOODS = [
+    { emoji: "😄", label: "最高！", color: "#3A9FD4", bg: "#E8F4FC" },
+    { emoji: "😊", label: "良い感じ", color: "#5AB8D8", bg: "#EDF7FB" },
+    { emoji: "😐", label: "普通", color: "#7FB8CC", bg: "#EEF5F8" },
+    { emoji: "😔", label: "ちょっと...", color: "#6A9CB8", bg: "#E8EFF4" },
+    { emoji: "🤕", label: "話す元気ない", color: "#8AAEC4", bg: "#E8EEF2" },
+  ];
+
+  const params = new URLSearchParams(window.location.search);
+  const myId = params.get("user") === "B" ? "B" : "A";
+  const partnerId = myId === "A" ? "B" : "A";
+
+  let state = { A: null, B: null };
+  let draftMood = null;
+
+  const timeAgo = (ts) => {
+    if (!ts) return "";
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return "たった今";
+    if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
+    return `${Math.floor(diff / 86400)}日前`;
+  };
+
+  const updateCard = (userId, data) => {
+    const isMe = userId === myId;
+    const prefix = isMe ? "my" : "partner";
+    const card = document.getElementById(`${prefix}-card`);
+    const emojiEl = document.getElementById(`${prefix}-emoji`);
+    const labelEl = document.getElementById(`${prefix}-label`);
+    const noteEl = document.getElementById(`${prefix}-note`);
+    const timeEl = document.getElementById(`${prefix}-time`);
+
+    if (data && data.mood !== null && data.mood !== undefined) {
+      const m = MOODS[data.mood];
+      card.style.background = m.bg;
+      emojiEl.textContent = m.emoji;
+      labelEl.textContent = m.label;
+      labelEl.style.color = m.color;
+      timeEl.textContent = timeAgo(data.ts);
+      if (data.note) {
+        noteEl.textContent = "💬 " + data.note;
+        noteEl.style.display = "block";
+      } else {
+        noteEl.style.display = "none";
+      }
+    } else {
+      card.style.background = "#F0F7FB";
+      emojiEl.textContent = "？";
+      labelEl.textContent = "未登録";
+      labelEl.style.color = "#9BBDD4";
+      noteEl.style.display = "none";
+      timeEl.textContent = "";
+    }
+
+    // match banner
+    const myData = state[myId];
+    const partnerData = state[partnerId];
+    const banner = document.getElementById("match-banner");
+    if (myData && partnerData && myData.mood !== null && partnerData.mood !== null) {
+      const diff = Math.abs(myData.mood - partnerData.mood);
+      banner.style.display = "block";
+      if (diff <= 1) banner.textContent = "💞 ふたりの気持ち、ぴったり！";
+      else if (myData.mood < partnerData.mood) banner.textContent = "🤍 あなたが元気そうで良かった";
+      else banner.textContent = "🤍 パートナーのこと、気にかけてみよう";
+    } else {
+      banner.style.display = "none";
+    }
+  };
+
+  // Firebase リアルタイム監視
+  onValue(ref(db, "moods"), (snapshot) => {
+    const data = snapshot.val() || {};
+    state.A = data.A || null;
+    state.B = data.B || null;
+    updateCard(myId, state[myId]);
+    updateCard(partnerId, state[partnerId]);
+  });
+
+  // ムードボタン生成
+  const grid = document.getElementById("mood-grid");
+  MOODS.forEach((m, i) => {
+    const btn = document.createElement("button");
+    btn.className = "mood-btn";
+    btn.id = `mood-btn-${i}`;
+    btn.innerHTML = `<div class="btn-emoji">${m.emoji}</div><div class="btn-label" id="mood-label-${i}">${m.label}</div>`;
+    btn.onclick = () => selectMood(i);
+    grid.appendChild(btn);
+  });
+
+  window.selectMood = (i) => {
+    draftMood = i;
+    MOODS.forEach((m, j) => {
+      const btn = document.getElementById(`mood-btn-${j}`);
+      const lbl = document.getElementById(`mood-label-${j}`);
+      if (j === i) {
+        btn.style.background = m.bg;
+        btn.style.borderColor = m.color;
+        btn.style.transform = "scale(1.08)";
+        lbl.style.color = m.color;
+      } else {
+        btn.style.background = "transparent";
+        btn.style.borderColor = "#C0DFF0";
+        btn.style.transform = "scale(1)";
+        lbl.style.color = "#7AAAC0";
+      }
+    });
+    const confirmBtn = document.getElementById("confirm-btn");
+    confirmBtn.disabled = false;
+    confirmBtn.classList.add("active");
+  };
+
+  window.openSet = () => {
+    draftMood = state[myId] ? state[myId].mood : null;
+    document.getElementById("note-input").value = state[myId] ? (state[myId].note || "") : "";
+    document.getElementById("home-view").style.display = "none";
+    document.getElementById("set-view").style.display = "block";
+    // 既存選択を反映
+    if (draftMood !== null) selectMood(draftMood);
+  };
+
+  window.closeSet = () => {
+    document.getElementById("set-view").style.display = "none";
+    document.getElementById("home-view").style.display = "block";
+  };
+
+  window.confirmMood = async () => {
+    if (draftMood === null) return;
+    const note = document.getElementById("note-input").value;
+    const data = { mood: draftMood, note, ts: Date.now() };
+    await set(ref(db, `moods/${myId}`), data);
+    const btn = document.getElementById("confirm-btn");
+    btn.textContent = "✓ 登録しました！";
+    setTimeout(() => {
+      btn.textContent = "この気持ちを登録する";
+      closeSet();
+    }, 900);
+  };
+</script>
+</body>
+</html>
